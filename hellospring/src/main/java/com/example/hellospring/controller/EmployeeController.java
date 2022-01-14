@@ -1,89 +1,75 @@
 package com.example.hellospring.controller;
 
 import com.example.hellospring.entity.Employee;
+import com.example.hellospring.service.EmployeeService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-
+import java.util.Optional;
 @RestController
 @RequestMapping(path = "api/v1/employees")
 public class EmployeeController {
-    private static ArrayList<Employee> listEmployee;
-    static {
-        listEmployee = new ArrayList<>();
-        listEmployee.add(new Employee(1, "Huong", 21, 10000));
-        listEmployee.add(new Employee(2, "Nhat", 23, 20000));
-        listEmployee.add(new Employee(3, "Minh", 24, 30000));
-        listEmployee.add(new Employee(4, "Hoang", 26, 40000));
-        listEmployee.add(new Employee(5, "Duc", 25, 50000));
+    @Autowired
+    EmployeeService employeeService;
+
+    //get list
+    @RequestMapping(method = RequestMethod.GET)
+    public ResponseEntity<Object> read(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10")int limit )
+    {
+        HashMap<String, Object> response = new HashMap<>();
+        response.put("page", page);
+        response.put("limit", limit);
+        response.put("data", employeeService.findAll());
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     //create
     @RequestMapping(method = RequestMethod.POST)
-    public Employee create(@RequestBody Employee employee){
-        listEmployee.add(employee);
-        return employee;
+    public ResponseEntity<Object> create(@RequestBody Employee employee){
+        employeeService.save(employee);
+        return new ResponseEntity<>(employee, HttpStatus.CREATED);
     }
 
-    //getList
-    @RequestMapping(method = RequestMethod.GET)
-    public HashMap<String, Object> getList(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit){
-        HashMap<String, Object> response = new HashMap<>();
-        response.put("page", page);
-        response.put("limit", limit);
-        response.put("data", listEmployee);
-        return response;
-    }
-
-    @RequestMapping(method = RequestMethod.GET, path = "/{id}")
-    //getDetail
-    public Employee getDetail(@PathVariable int id){
-        Employee employee = null;
-        for (int i = 0; i < listEmployee.size(); i++) {
-            if (listEmployee.get(i).getId() == id){
-                employee = listEmployee.get(i);
-                break;
-            }
+    //get details
+    @RequestMapping(method = RequestMethod.GET, path = "{id}")
+    public ResponseEntity<Object> getDetail(@PathVariable int id){
+        Optional<Employee> optionalEmployee = employeeService.findById(id);
+        if (optionalEmployee.isPresent()){
+            return new ResponseEntity<>(optionalEmployee.get(), HttpStatus.OK);
+        }else {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         }
-        return employee;
     }
-
-    @RequestMapping(method = RequestMethod.PUT, path = "/{id}")
     //update
-    public Employee update(@PathVariable int id, @RequestBody Employee updatedEmployee){
-        Employee employee = null;
-        // tìm kiếm trong danh sách
-        for (int i = 0; i < listEmployee.size(); i++) {
-            if (listEmployee.get(i).getId() == id){
-                employee = listEmployee.get(i);
-                break;
-            }
+    @RequestMapping(method = RequestMethod.PUT, path = "{id}")
+    public ResponseEntity<Object> update(@PathVariable int id, @RequestBody Employee updateEmployee){
+        Optional<Employee> optionalEmployee = employeeService.findById(id);
+        if (optionalEmployee.isPresent()){
+            Employee employee = optionalEmployee.get();
+            employee.setName(updateEmployee.getName());
+            employee.setAge(updateEmployee.getAge());
+            employee.setSalary(updateEmployee.getSalary());
+            employeeService.save(employee);
+            return new ResponseEntity<>(employee, HttpStatus.OK);
+        }else {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         }
-        if (employee != null){
-            employee.setName(updatedEmployee.getName());
-            employee.setAge(updatedEmployee.getAge());
-            employee.setSalary(updatedEmployee.getSalary());
-        }
-        return employee;
     }
 
-    @RequestMapping(method = RequestMethod.DELETE, path = "/{id}")
     //delete
-    public boolean delete(@PathVariable int id){
-        int indexItem = -1;
-        for (int i = 0; i < listEmployee.size(); i++) {
-            if (listEmployee.get(i).getId() == id){
-                indexItem = i;
-            }
+    @RequestMapping(method = RequestMethod.DELETE, path = "{id}")
+    public ResponseEntity<Object>  delete(@PathVariable int id) {
+        Optional<Employee> optionalEmployee = employeeService.findById(id);
+        if (optionalEmployee.isPresent()) {
+            employeeService.delete(optionalEmployee.get());
+            return new ResponseEntity<>(true, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(false, HttpStatus.NOT_FOUND);
         }
-        if (indexItem == -1){
-            return false;
-        }
-        listEmployee.remove(indexItem);
-        return true;
     }
-
 }
